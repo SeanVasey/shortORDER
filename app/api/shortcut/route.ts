@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { validateGraph } from "@/lib/graph";
 import { graphToShortcutPlist } from "@/lib/plist";
-import { storeShortcut } from "@/lib/storage";
+import { activeBackend, storeShortcut } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -42,5 +42,5 @@ export async function POST(request: Request) {
       silent: "false", // always let the user review before adding
     }).toString();
 
-  return NextResponse.json({ id, fileUrl, importUrl });
+  return NextResponse.json({ id, fileUrl, importUrl, storage: activeBackend() });
 }

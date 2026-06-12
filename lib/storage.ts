@@ -91,11 +91,25 @@ const blobStore: ShortcutStore = {
   },
 };
 
-function activeStore(): ShortcutStore {
-  return process.env.BLOB_READ_WRITE_TOKEN ? blobStore : memoryStore;
+/** Which backend is live — surfaced by POST /api/shortcut for diagnosability. */
+export function activeBackend(): "blob" | "memory" {
+  return process.env.BLOB_READ_WRITE_TOKEN ? "blob" : "memory";
 }
 
+function activeStore(): ShortcutStore {
+  return activeBackend() === "blob" ? blobStore : memoryStore;
+}
+
+let warnedMemoryInProd = false;
+
 export async function storeShortcut(name: string, plistXml: string): Promise<string> {
+  if (activeBackend() === "memory" && process.env.NODE_ENV === "production" && !warnedMemoryInProd) {
+    warnedMemoryInProd = true;
+    console.warn(
+      "storage: BLOB_READ_WRITE_TOKEN is not set — using the in-process memory store. " +
+        "On serverless this breaks cross-instance fetches (imports will 404).",
+    );
+  }
   // Hyphen-free id keeps the import URL tidy.
   const id = randomUUID().replace(/-/g, "");
   await activeStore().put(id, {
