@@ -52,6 +52,22 @@ const memoryStore: ShortcutStore = {
 
 // ── Vercel Blob backend ─────────────────────────────────────────────────────
 
+/**
+ * Resolve the Blob read-write token. Connecting a store with a custom
+ * environment-variable prefix yields `<PREFIX>_READ_WRITE_TOKEN` instead of
+ * the default `BLOB_READ_WRITE_TOKEN`; accept either so a rename in the
+ * Vercel dashboard doesn't silently drop the app onto the memory fallback.
+ */
+function blobToken(): string | undefined {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN;
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key.endsWith("_READ_WRITE_TOKEN") && value?.startsWith("vercel_blob_rw_")) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
 // Blob objects are a small JSON envelope so the display name and creation
 // time survive without relying on provider metadata support.
 const blobStore: ShortcutStore = {
@@ -67,17 +83,18 @@ const blobStore: ShortcutStore = {
       contentType: "application/json",
       addRandomSuffix: false,
       cacheControlMaxAge: Math.floor(SHORTCUT_TTL_MS / 1000),
+      token: blobToken(),
     });
   },
   async get(id) {
     const { head, del } = await import("@vercel/blob");
     try {
-      const info = await head(`shortcuts/${id}.json`);
+      const info = await head(`shortcuts/${id}.json`, { token: blobToken() });
       const res = await fetch(info.url);
       if (!res.ok) return null;
       const envelope = (await res.json()) as { name: string; createdAt: number; plist: string };
       if (Date.now() - envelope.createdAt > SHORTCUT_TTL_MS) {
-        await del(info.url).catch(() => {});
+        await del(info.url, { token: blobToken() }).catch(() => {});
         return null;
       }
       return {
@@ -93,7 +110,7 @@ const blobStore: ShortcutStore = {
 
 /** Which backend is live — surfaced by POST /api/shortcut for diagnosability. */
 export function activeBackend(): "blob" | "memory" {
-  return process.env.BLOB_READ_WRITE_TOKEN ? "blob" : "memory";
+  return blobToken() ? "blob" : "memory";
 }
 
 function activeStore(): ShortcutStore {
@@ -105,9 +122,15 @@ let warnedMemoryInProd = false;
 export async function storeShortcut(name: string, plistXml: string): Promise<string> {
   if (activeBackend() === "memory" && process.env.NODE_ENV === "production" && !warnedMemoryInProd) {
     warnedMemoryInProd = true;
+    // Log candidate env var NAMES (never values) so a misnamed token is
+    // diagnosable from the private runtime logs alone.
+    const candidates = Object.keys(process.env)
+      .filter((k) => /BLOB|READ_WRITE_TOKEN/i.test(k))
+      .join(", ");
     console.warn(
-      "storage: BLOB_READ_WRITE_TOKEN is not set — using the in-process memory store. " +
-        "On serverless this breaks cross-instance fetches (imports will 404).",
+      "storage: no Vercel Blob read-write token found — using the in-process memory store. " +
+        "On serverless this breaks cross-instance fetches (imports will 404). " +
+        `Env keys matching BLOB/READ_WRITE_TOKEN: ${candidates || "none"}`,
     );
   }
   // Hyphen-free id keeps the import URL tidy.
