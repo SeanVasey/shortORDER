@@ -1,0 +1,184 @@
+@import "tailwindcss";
+@import "../styles/glass.css";
+
+/* ── VASEY/AI canonical tokens ─────────────────────────────────────────── */
+@theme {
+  --color-void: #0a0e14;
+  --color-charcoal: #131923;
+  --color-pewter: #2b3543;
+  --color-chalk: #e9edf2;
+  --color-silver: #9aa7b6;
+  --color-muted: #5d6979;
+  --color-signature: #194151;
+  --color-slate-blue: #3e5d78;
+  --color-teal: #00b8d9;
+  --color-beam: #4bc2f0;
+  --color-seafoam: #34d0a8;
+  --color-indigo: #454cfc;
+  --color-blaze: #ff5c45;
+  --color-lime: #c0ff5a;
+
+  --font-display: var(--font-bebas), "Bebas Neue", sans-serif;
+  --font-sans: var(--font-reddit), "Reddit Sans", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", monospace;
+}
+
+:root {
+  /* The 25° beam motif. Never rotate it off 25°. */
+  --beam-angle: 25deg;
+  /* Scroll progress 0–1, driven by the Lenis provider */
+  --scroll-progress: 0;
+  color-scheme: dark;
+}
+
+html {
+  background: var(--color-void);
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-chalk);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* Safe areas (iPhone notch / home indicator) */
+.safe-x {
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  padding-right: max(1.25rem, env(safe-area-inset-right));
+}
+.safe-top {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+.safe-bottom {
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+/* Visible keyboard focus, everywhere */
+:focus-visible {
+  outline: 2px solid var(--color-beam);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-teal) 40%, transparent);
+}
+
+/* ── Type treatment ────────────────────────────────────────────────────── */
+.display {
+  font-family: var(--font-display);
+  letter-spacing: 0.035em;
+  line-height: 0.92;
+}
+
+/* Wordmark: "short" light, "ORDER" emphasized — internal-caps convention */
+.wordmark {
+  font-family: var(--font-display);
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+.wordmark .wm-quiet {
+  color: var(--color-silver);
+  font-weight: 400;
+}
+.wordmark .wm-loud {
+  color: var(--color-chalk);
+  text-shadow: 0 0 28px color-mix(in srgb, var(--color-beam) 55%, transparent);
+}
+
+.meta-mono {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ── Reveal-on-scroll (along the beam axis) ────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translate3d(
+    calc(cos(var(--beam-angle)) * -26px),
+    calc(sin(var(--beam-angle)) * 26px),
+    0
+  );
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0s);
+}
+.reveal.revealed {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Section divider on the 25° beam */
+.beam-divider {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    calc(90deg + var(--beam-angle)),
+    transparent 0%,
+    color-mix(in srgb, var(--color-teal) 60%, transparent) 35%,
+    color-mix(in srgb, var(--color-beam) 80%, transparent) 50%,
+    color-mix(in srgb, var(--color-teal) 60%, transparent) 65%,
+    transparent 100%
+  );
+}
+
+/* ── The pass: action graph assembly ───────────────────────────────────── */
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.step-in {
+  animation: step-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes splash-sweep {
+  from {
+    transform: translateX(-130%) rotate(calc(-1 * var(--beam-angle)));
+  }
+  to {
+    transform: translateX(130%) rotate(calc(-1 * var(--beam-angle)));
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.pulse-soft {
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    transform: none;
+    transition: opacity 0.4s ease;
+  }
+  .step-in {
+    animation: none;
+    opacity: 1;
+  }
+  .pulse-soft {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
