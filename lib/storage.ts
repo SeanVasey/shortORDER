@@ -122,16 +122,13 @@ let warnedMemoryInProd = false;
 export async function storeShortcut(name: string, plistXml: string): Promise<string> {
   if (activeBackend() === "memory" && process.env.NODE_ENV === "production" && !warnedMemoryInProd) {
     warnedMemoryInProd = true;
-    // Log candidate env var NAMES (never values) so a misnamed token is
-    // diagnosable from the private runtime logs alone.
-    const candidates = Object.keys(process.env)
-      .filter((k) => /BLOB|READ_WRITE_TOKEN/i.test(k))
-      .join(", ");
-    console.warn(
-      "storage: no Vercel Blob read-write token found — using the in-process memory store. " +
-        "On serverless this breaks cross-instance fetches (imports will 404). " +
-        `Env keys matching BLOB/READ_WRITE_TOKEN: ${candidates || "none"}`,
-    );
+    // Memory in production means a misconfigured store. Log every env key
+    // NAME (never values) in short lines that survive log-viewer truncation,
+    // so the misconfiguration is readable from the private runtime logs.
+    console.warn("storage: memory fallback in prod");
+    for (const key of Object.keys(process.env).sort()) {
+      console.warn(`E: ${key}`);
+    }
   }
   // Hyphen-free id keeps the import URL tidy.
   const id = randomUUID().replace(/-/g, "");
