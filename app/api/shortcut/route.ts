@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { validateGraph } from "@/lib/graph";
 import { graphToShortcutPlist } from "@/lib/plist";
-import { activeBackend, storeShortcut } from "@/lib/storage";
+import { activeBackend, storageEnvCandidates, storeShortcut } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -42,5 +42,14 @@ export async function POST(request: Request) {
       silent: "false", // always let the user review before adding
     }).toString();
 
-  return NextResponse.json({ id, fileUrl, importUrl, storage: activeBackend() });
+  const storage = activeBackend();
+  return NextResponse.json({
+    id,
+    fileUrl,
+    importUrl,
+    storage,
+    // Misconfiguration aid: env key NAMES (never values) that look
+    // storage-related, present only while the memory fallback is active.
+    ...(storage === "memory" ? { storageEnvCandidates: storageEnvCandidates() } : {}),
+  });
 }
