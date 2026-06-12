@@ -60,12 +60,20 @@ const memoryStore: ShortcutStore = {
  */
 function blobToken(): string | undefined {
   if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN;
-  for (const [key, value] of Object.entries(process.env)) {
-    if (key.endsWith("_READ_WRITE_TOKEN") && value?.startsWith("vercel_blob_rw_")) {
-      return value;
-    }
-  }
-  return undefined;
+  // Any non-empty *_READ_WRITE_TOKEN counts; token value formats have
+  // changed over time, so don't filter on the value. Prefer a key
+  // mentioning BLOB if several match.
+  const matches = Object.entries(process.env)
+    .filter(([key, value]) => key.endsWith("_READ_WRITE_TOKEN") && value)
+    .sort(([a], [b]) => Number(b.includes("BLOB")) - Number(a.includes("BLOB")));
+  return matches[0]?.[1];
+}
+
+/** Env key NAMES (never values) relevant to storage config — for diagnostics. */
+export function storageEnvCandidates(): string[] {
+  return Object.keys(process.env)
+    .filter((k) => /BLOB|READ_WRITE_TOKEN/i.test(k))
+    .sort();
 }
 
 // Blob objects are a small JSON envelope so the display name and creation
@@ -122,13 +130,9 @@ let warnedMemoryInProd = false;
 export async function storeShortcut(name: string, plistXml: string): Promise<string> {
   if (activeBackend() === "memory" && process.env.NODE_ENV === "production" && !warnedMemoryInProd) {
     warnedMemoryInProd = true;
-    // Memory in production means a misconfigured store. Log every env key
-    // NAME (never values) in short lines that survive log-viewer truncation,
-    // so the misconfiguration is readable from the private runtime logs.
-    console.warn("storage: memory fallback in prod");
-    for (const key of Object.keys(process.env).sort()) {
-      console.warn(`E: ${key}`);
-    }
+    console.warn(
+      `storage: memory fallback in prod; candidate env keys: ${storageEnvCandidates().join("|") || "none"}`,
+    );
   }
   // Hyphen-free id keeps the import URL tidy.
   const id = randomUUID().replace(/-/g, "");
