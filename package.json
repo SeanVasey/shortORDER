@@ -1,21 +1,28 @@
 {
   "name": "shortorder",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tell it what you want. Order up. Natural language to Apple Shortcuts.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "tsx --test tests/*.test.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "audit": "npm audit --omit=dev --audit-level=moderate"
   },
   "repository": {
     "type": "git",
     "url": "http://local_proxy@127.0.0.1:46527/git/SeanVasey/shortORDER"
   },
-  "keywords": [],
+  "keywords": [
+    "ios",
+    "shortcuts",
+    "pwa",
+    "automation",
+    "nextjs"
+  ],
   "author": "",
   "license": "GPL-3.0",
   "private": "true",
@@ -33,6 +40,14 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "tailwindcss": "^4.3.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.20.0",
+    "npm": ">=10.0.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.15"
   }
 }

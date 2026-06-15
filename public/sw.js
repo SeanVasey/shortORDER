@@ -1,8 +1,8 @@
 /* shortORDER service worker: offline app shell, nothing clever.
    API traffic always goes to the network — orders can't be cached. */
 
-const CACHE = "shortorder-v1";
-const SHELL = ["/", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
+const CACHE = "shortorder-v2";
+const SHELL = ["/", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -28,8 +28,10 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(event.request)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((cache) => cache.put("/", copy));
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((cache) => cache.put("/", copy));
+          }
           return res;
         })
         .catch(() => caches.match("/"))

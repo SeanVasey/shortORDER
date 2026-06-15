@@ -56,6 +56,58 @@ export interface ImportQuestion {
   defaultValue?: string;
 }
 
+
+const MAX_ACTIONS = 80;
+const MAX_PARAM_DEPTH = 8;
+const MAX_ARRAY_ITEMS = 100;
+const MAX_STRING_CHARS = 4000;
+
+function cleanString(value: string, max = MAX_STRING_CHARS): string {
+  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim().slice(0, max);
+}
+
+function validateParamValue(value: unknown, path: string, depth = 0): ParamValue {
+  if (depth > MAX_PARAM_DEPTH) throw new Error(`${path}: too deep`);
+  if (typeof value === "string") return cleanString(value);
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error(`${path}: non-finite number`);
+    return value;
+  }
+  if (Array.isArray(value)) {
+    if (value.length > MAX_ARRAY_ITEMS) throw new Error(`${path}: too many items`);
+    return value.map((item, index) => validateParamValue(item, `${path}[${index}]`, depth + 1));
+  }
+  if (typeof value !== "object" || value === null) throw new Error(`${path}: unsupported value`);
+
+  const record = value as Record<string, unknown>;
+  if (record.$ref === "output") {
+    if (typeof record.action !== "number" || !Number.isInteger(record.action) || record.action < 0) {
+      throw new Error(`${path}: invalid output ref`);
+    }
+    return {
+      $ref: "output",
+      action: record.action,
+      name: typeof record.name === "string" ? cleanString(record.name, 80) : "Result",
+    };
+  }
+  if (record.$ref === "variable") {
+    if (typeof record.name !== "string" || !record.name.trim()) {
+      throw new Error(`${path}: invalid variable ref`);
+    }
+    return { $ref: "variable", name: cleanString(record.name, 80) };
+  }
+
+  const out: Record<string, ParamValue> = {};
+  for (const [key, child] of Object.entries(record)) {
+    if (!key || key.length > 120 || key === "__proto__" || key === "constructor" || key === "prototype") {
+      throw new Error(`${path}: unsafe key`);
+    }
+    out[key] = validateParamValue(child, `${path}.${key}`, depth + 1);
+  }
+  return out;
+}
+
 export interface ActionGraph {
   title: string;
   summary: string;
@@ -95,11 +147,11 @@ export function validateGraph(raw: unknown): ActionGraph {
     throw new Error("graph: bad feasibility");
   }
 
-  const title = typeof g.title === "string" && g.title.trim() ? g.title.trim().slice(0, 80) : "Untitled order";
-  const summary = typeof g.summary === "string" ? g.summary.trim() : "";
+  const title = typeof g.title === "string" && g.title.trim() ? cleanString(g.title, 80) : "Untitled order";
+  const summary = typeof g.summary === "string" ? cleanString(g.summary, 1000) : "";
   const confidence = typeof g.confidence === "number" ? Math.min(1, Math.max(0, g.confidence)) : 0;
 
-  const rawActions = Array.isArray(g.actions) ? g.actions : [];
+  const rawActions = Array.isArray(g.actions) ? g.actions.slice(0, MAX_ACTIONS) : [];
   const actions: GraphAction[] = rawActions.map((a, i) => {
     if (typeof a !== "object" || a === null) throw new Error(`graph: action ${i} not an object`);
     const act = a as Record<string, unknown>;
@@ -108,12 +160,12 @@ export function validateGraph(raw: unknown): ActionGraph {
     }
     const parameters =
       typeof act.parameters === "object" && act.parameters !== null
-        ? (act.parameters as Record<string, ParamValue>)
+        ? (validateParamValue(act.parameters, `graph.actions[${i}].parameters`) as Record<string, ParamValue>)
         : {};
     return {
-      identifier: act.identifier,
+      identifier: cleanString(act.identifier, 160),
       parameters,
-      note: typeof act.note === "string" ? act.note : "",
+      note: typeof act.note === "string" ? cleanString(act.note, 500) : "",
     };
   });
 
@@ -132,15 +184,15 @@ export function validateGraph(raw: unknown): ActionGraph {
     }
     return [{
       actionIndex: iq.actionIndex,
-      parameterKey: iq.parameterKey,
-      prompt: iq.prompt,
-      ...(typeof iq.defaultValue === "string" ? { defaultValue: iq.defaultValue } : {}),
+      parameterKey: cleanString(iq.parameterKey, 120),
+      prompt: cleanString(iq.prompt, 300),
+      ...(typeof iq.defaultValue === "string" ? { defaultValue: cleanString(iq.defaultValue, 300) } : {}),
     }];
   });
 
-  const gaps = Array.isArray(g.gaps) ? g.gaps.filter((x): x is string => typeof x === "string") : [];
+  const gaps = Array.isArray(g.gaps) ? g.gaps.filter((x): x is string => typeof x === "string").map((x) => cleanString(x, 500)).slice(0, 20) : [];
   const manualSteps = Array.isArray(g.manualSteps)
-    ? g.manualSteps.filter((x): x is string => typeof x === "string")
+    ? g.manualSteps.filter((x): x is string => typeof x === "string").map((x) => cleanString(x, 500)).slice(0, 20)
     : undefined;
 
   return { title, summary, feasibility, confidence, actions, importQuestions, gaps, manualSteps };

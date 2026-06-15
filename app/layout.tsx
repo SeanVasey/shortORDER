@@ -1,13 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Bebas_Neue, JetBrains_Mono, Reddit_Sans } from "next/font/google";
 import GlassFilters from "@/components/GlassFilters";
 import LenisProvider from "@/components/LenisProvider";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import "./globals.css";
-
-const bebas = Bebas_Neue({ weight: "400", subsets: ["latin"], variable: "--font-bebas" });
-const reddit = Reddit_Sans({ subsets: ["latin"], variable: "--font-reddit" });
-const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
 
 export const metadata: Metadata = {
   title: "shortORDER — natural language to Apple Shortcuts",
@@ -34,7 +29,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${bebas.variable} ${reddit.variable} ${jetbrains.variable}`}>
+    <html lang="en">
       <body>
         <GlassFilters />
         <ServiceWorkerRegister />
