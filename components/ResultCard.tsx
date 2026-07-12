@@ -13,6 +13,8 @@ interface ResultCardProps {
   importUrl: string | null;
   /** Direct path still serializing */
   building: boolean;
+  /** File is held in one server instance's memory — link may die any moment */
+  ephemeral?: boolean;
 }
 
 /**
@@ -20,13 +22,13 @@ interface ResultCardProps {
  * shortcuts:// scheme when the verdict allows it, and the numbered
  * build instructions always available underneath.
  */
-export default function ResultCard({ graph, importUrl, building }: ResultCardProps) {
+export default function ResultCard({ graph, importUrl, building, ephemeral }: ResultCardProps) {
   const [showSteps, setShowSteps] = useState(graph.feasibility !== "native" || !importUrl);
   const steps = graphToSteps(graph);
   const impossible = graph.feasibility === "impossible";
 
   return (
-    <GlassPanel className="[--glass-radius:1.4rem]" glow={impossible ? 0.25 : 0.7} contentClassName="p-6 sm:p-8">
+    <GlassPanel className="glass-radius-lg" glow={impossible ? 0.25 : 0.7} contentClassName="glass-scrim p-6 sm:p-8">
       <div className="flex flex-wrap items-center gap-3">
         <FeasibilityChip feasibility={graph.feasibility} confidence={graph.confidence} />
         <h3 className="display text-2xl text-chalk">{graph.title}</h3>
@@ -55,9 +57,15 @@ export default function ResultCard({ graph, importUrl, building }: ResultCardPro
               ) : (
                 importUrl && (
                   <>
-                    <GlassLink href={importUrl} size="lg" accent className="w-full sm:w-auto">
+                    <GlassLink href={importUrl} size="lg" accent tone="ready" className="w-full sm:w-auto">
                       Add to Shortcuts
                     </GlassLink>
+                    {ephemeral && (
+                      <p className="mt-3 font-mono text-xs text-blaze">
+                        Ephemeral kitchen — this file is held in one server&apos;s memory.
+                        Import it right away; if the import 404s, fire the order again.
+                      </p>
+                    )}
                     <p className="mt-3 text-xs leading-relaxed text-muted">
                       iOS will preview it as an untrusted shortcut — that&apos;s normal for anything
                       built outside the Gallery. Review the actions, then tap{" "}
@@ -112,7 +120,7 @@ export default function ResultCard({ graph, importUrl, building }: ResultCardPro
           </div>
 
           {graph.manualSteps && graph.manualSteps.length > 0 && (
-            <div className="mt-6 rounded-lg border border-beam/25 bg-beam/5 p-4">
+            <div className="mt-6 rounded-lg border border-indigo/40 bg-indigo/10 p-4">
               <p className="meta-mono text-beam">Finish by hand</p>
               <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-silver">
                 {graph.manualSteps.map((step, i) => (

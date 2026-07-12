@@ -2,18 +2,22 @@
  * Ephemeral .shortcut hosting.
  *
  * The Shortcuts importer needs a publicly fetchable http(s) URL — a data:
- * URI will not work — so generated files are stored briefly and streamed
- * back through GET /api/shortcut/[id].
+ * URI will not work — so generated files are served back through
+ * GET /api/shortcut/*.
  *
  * Backends:
- *  - Vercel Blob when BLOB_READ_WRITE_TOKEN is set (durable across
+ *  - Vercel Blob when a read-write token is set (durable across
  *    serverless instances; objects are deleted after TTL on read-through).
- *  - In-process memory otherwise (local dev / single long-lived server).
- *
- * Cloudflare R2 can slot in later behind the same interface.
+ *  - Stateless otherwise: the gzipped plist rides inside the download URL
+ *    itself (GET /api/shortcut/dl?d=…), so any serverless instance can
+ *    serve it with no shared storage at all.
+ *  - In-process memory only as the last resort for payloads too large to
+ *    fit in a URL when no Blob token exists — fragile on serverless, and
+ *    surfaced as such to the client.
  */
 
 import { randomUUID } from "node:crypto";
+import { gzipSync, gunzipSync } from "node:zlib";
 
 export const SHORTCUT_TTL_MS = 15 * 60 * 1000;
 
@@ -116,9 +120,52 @@ const blobStore: ShortcutStore = {
   },
 };
 
+// ── Stateless backend: the file travels inside the URL ─────────────────────
+
+/**
+ * Cap on the encoded payload so the shortcuts://import-shortcut URL (which
+ * wraps the download URL again) stays well inside URL/header limits.
+ */
+export const MAX_STATELESS_PAYLOAD_CHARS = 6000;
+const MAX_DECODED_BYTES = 256 * 1024;
+
+/**
+ * gzip + base64url the plist and its display name. Returns null when the
+ * result would not fit in a URL — callers fall back to a stored backend.
+ */
+export function encodeShortcutPayload(name: string, plistXml: string): string | null {
+  const envelope = JSON.stringify({ name, plist: plistXml });
+  const payload = gzipSync(Buffer.from(envelope, "utf8")).toString("base64url");
+  return payload.length <= MAX_STATELESS_PAYLOAD_CHARS ? payload : null;
+}
+
+/**
+ * Inverse of encodeShortcutPayload. Returns null on anything malformed:
+ * bad charset, corrupt gzip, oversized output, or content that is not an
+ * XML plist — this endpoint must not become an arbitrary-download oracle.
+ */
+export function decodeShortcutPayload(payload: string): StoredShortcut | null {
+  if (!payload || payload.length > MAX_STATELESS_PAYLOAD_CHARS || !/^[\w-]+$/.test(payload)) {
+    return null;
+  }
+  try {
+    const raw = gunzipSync(Buffer.from(payload, "base64url"), { maxOutputLength: MAX_DECODED_BYTES });
+    const envelope = JSON.parse(raw.toString("utf8")) as { name?: unknown; plist?: unknown };
+    if (typeof envelope.name !== "string" || typeof envelope.plist !== "string") return null;
+    if (!envelope.plist.trimStart().startsWith("<?xml") || !envelope.plist.includes("<plist")) return null;
+    return {
+      body: new TextEncoder().encode(envelope.plist),
+      name: envelope.name,
+      createdAt: Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Which backend is live — surfaced by POST /api/shortcut for diagnosability. */
-export function activeBackend(): "blob" | "memory" {
-  return blobToken() ? "blob" : "memory";
+export function activeBackend(): "blob" | "stateless" {
+  return blobToken() ? "blob" : "stateless";
 }
 
 function activeStore(): ShortcutStore {
@@ -127,11 +174,16 @@ function activeStore(): ShortcutStore {
 
 let warnedMemoryInProd = false;
 
+/**
+ * Store the file in blob (token present) or memory (oversized-payload
+ * fallback). The common no-token path never reaches this — it rides the
+ * stateless URL instead.
+ */
 export async function storeShortcut(name: string, plistXml: string): Promise<string> {
-  if (activeBackend() === "memory" && process.env.NODE_ENV === "production" && !warnedMemoryInProd) {
+  if (activeBackend() !== "blob" && process.env.NODE_ENV === "production" && !warnedMemoryInProd) {
     warnedMemoryInProd = true;
     console.warn(
-      `storage: memory fallback in prod; candidate env keys: ${storageEnvCandidates().join("|") || "none"}`,
+      `storage: memory fallback in prod (payload too large for a stateless URL); candidate env keys: ${storageEnvCandidates().join("|") || "none"}`,
     );
   }
   // Hyphen-free id keeps the import URL tidy.

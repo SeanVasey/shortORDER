@@ -34,7 +34,7 @@ export default function ActionGraph({ graph }: { graph: Graph }) {
   if (graph.actions.length === 0) return null;
 
   return (
-    <ol className="font-mono text-[0.78rem] leading-6 text-silver" aria-label="Parsed actions">
+    <ol className="font-mono text-xs leading-6 text-silver" aria-label="Parsed actions">
       {graph.actions.slice(0, visible).map((action, i) => {
         const def = ACTIONS_BY_ID.get(action.identifier);
         const isEnd = action.parameters.WFControlFlowMode === 2;

@@ -18,9 +18,14 @@
   --color-blaze: #ff5c45;
   --color-lime: #c0ff5a;
 
-  --font-display: "Arial Narrow", "Avenir Next Condensed", Impact, sans-serif;
+  --font-display: "Arial Narrow", "Avenir Next Condensed", var(--font-archivo-narrow), Impact,
+    sans-serif;
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
+  /* JetBrains Mono is the canonical VASEY/AI mono face — self-hosted via
+     next/font/local in app/layout.tsx (no build-time fetch), system mono
+     as the fallback chain. */
+  --font-mono: var(--font-jetbrains-mono), "SFMono-Regular", "SF Mono", Consolas,
+    "Liberation Mono", monospace;
 }
 
 :root {
@@ -89,12 +94,67 @@ body {
   text-shadow: 0 0 28px color-mix(in srgb, var(--color-beam) 55%, transparent);
 }
 
-.meta-mono {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-muted);
+/* Component-tier treatments live in the components layer so single-purpose
+   utilities (text-teal, rounded-xl, …) can override them at call sites. */
+@layer components {
+  .meta-mono {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  /* The chip/pill: one border-and-hover treatment, shape and padding are
+     the call site's business. */
+  .pill {
+    cursor: pointer;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--color-pewter) 60%, transparent);
+    color: var(--color-silver);
+    transition:
+      color 0.2s ease,
+      border-color 0.2s ease;
+  }
+  .pill:hover {
+    border-color: color-mix(in srgb, var(--color-teal) 60%, transparent);
+    color: var(--color-chalk);
+  }
+
+  /* Glass radius scale — .glass defaults to the md step (1.25rem). */
+  .glass-radius-sm {
+    --glass-radius: 1rem;
+  }
+  .glass-radius-lg {
+    --glass-radius: 1.5rem;
+  }
+
+  /* Deep-water wash: Signature/Slate-Blue radials behind body sections,
+     offset along the beam axis. Background only — never on glass. */
+  .section-wash {
+    position: relative;
+  }
+  .section-wash::before {
+    content: "";
+    position: absolute;
+    /* No horizontal bleed: an off-viewport layout box would reintroduce
+       sideways scroll on iOS. The blur halo bleeds visually on its own. */
+    inset: -12% 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        55% 45% at calc(16% + cos(var(--beam-angle)) * 12%) calc(28% + sin(var(--beam-angle)) * 12%),
+        color-mix(in srgb, var(--color-signature) 42%, transparent) 0%,
+        transparent 70%
+      ),
+      radial-gradient(
+        48% 42% at 86% 74%,
+        color-mix(in srgb, var(--color-slate-blue) 20%, transparent) 0%,
+        transparent 65%
+      );
+    filter: blur(44px);
+  }
 }
 
 /* ── Reveal-on-scroll (along the beam axis) ────────────────────────────── */
@@ -113,6 +173,25 @@ body {
 .reveal.revealed {
   opacity: 1;
   transform: translate3d(0, 0, 0);
+}
+
+/* The beam-as-playhead (components/Beam.tsx): position bound to
+   --scroll-progress, rotation locked to the 25° beam angle. */
+.beam-playhead {
+  top: calc(8vh + var(--scroll-progress) * 84vh);
+  transform: rotate(calc(-1 * var(--beam-angle)));
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-teal) 50%, transparent) 30%,
+    var(--color-beam) 50%,
+    color-mix(in srgb, var(--color-teal) 50%, transparent) 70%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 18px 2px color-mix(in srgb, var(--color-beam) 45%, transparent),
+    0 0 60px 8px color-mix(in srgb, var(--color-teal) 18%, transparent);
+  opacity: 0.7;
 }
 
 /* Section divider on the 25° beam */

@@ -49,7 +49,7 @@ export default function Home() {
         </section>
 
         {/* ── How it works ──────────────────────────────────────────────── */}
-        <section className="safe-x mx-auto w-full max-w-2xl py-24" aria-labelledby="how-heading">
+        <section className="section-wash safe-x mx-auto w-full max-w-2xl py-24" aria-labelledby="how-heading">
           <hr className="beam-divider mb-16" />
           <Reveal>
             <p className="meta-mono mb-2 text-teal">The line</p>
@@ -73,7 +73,7 @@ export default function Home() {
         </section>
 
         {/* ── What to expect on import ──────────────────────────────────── */}
-        <section className="safe-x mx-auto w-full max-w-2xl py-24" aria-labelledby="trust-heading">
+        <section className="section-wash safe-x mx-auto w-full max-w-2xl py-24" aria-labelledby="trust-heading">
           <hr className="beam-divider mb-16" />
           <Reveal>
             <p className="meta-mono mb-2 text-teal">Straight talk</p>
