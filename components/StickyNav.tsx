@@ -32,12 +32,12 @@ export default function StickyNav() {
         shown ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-4 opacity-0"
       }`}
     >
-      <GlassPanel className="mx-auto max-w-xl [--glass-radius:1rem]" glow={0.35} contentClassName="flex items-center justify-between px-4 py-2.5">
+      <GlassPanel className="glass-radius-sm mx-auto max-w-xl" glow={0.35} contentClassName="glass-scrim flex items-center justify-between px-4 py-2.5">
         <Wordmark className="text-xl" />
         <button
           type="button"
           onClick={backToOrder}
-          className="cursor-pointer rounded-lg border border-pewter/60 px-3 py-1.5 text-xs text-silver transition-colors hover:border-teal/60 hover:text-chalk"
+          className="pill rounded-lg px-3 py-1.5 text-xs"
         >
           New order
         </button>

@@ -88,7 +88,9 @@ export async function POST(request: Request) {
   try {
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 4096,
+      // Complex orders can exceed 4k output tokens and truncate mid-JSON;
+      // headroom is cheap, truncation is a user-facing 502.
+      max_tokens: 12000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: requestText }],
     });

@@ -10,7 +10,7 @@ const STYLES: Record<Feasibility, string> = {
 export default function FeasibilityChip({ feasibility, confidence }: { feasibility: Feasibility; confidence?: number }) {
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1 font-mono text-[0.7rem] tracking-[0.18em] uppercase ${STYLES[feasibility]}`}
+      className={`meta-mono inline-flex items-center gap-2 rounded-md border px-2.5 py-1 ${STYLES[feasibility]}`}
     >
       {feasibility}
       {confidence !== undefined && (

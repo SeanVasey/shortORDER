@@ -26,6 +26,7 @@ export default function OrderConsole() {
   const [error, setError] = useState("");
   const [graph, setGraph] = useState<ActionGraph | null>(null);
   const [importUrl, setImportUrl] = useState<string | null>(null);
+  const [ephemeral, setEphemeral] = useState(false);
   const [building, setBuilding] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLTextAreaElement>(null);
@@ -38,6 +39,7 @@ export default function OrderConsole() {
       setError("");
       setGraph(null);
       setImportUrl(null);
+      setEphemeral(false);
 
       try {
         const res = await fetch("/api/parse", {
@@ -69,8 +71,13 @@ export default function OrderConsole() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ graph: data.graph }),
             });
-            const sdata = (await sres.json()) as { importUrl?: string };
-            if (sres.ok && sdata.importUrl) setImportUrl(sdata.importUrl);
+            const sdata = (await sres.json()) as { importUrl?: string; storage?: string };
+            if (sres.ok && sdata.importUrl) {
+              setImportUrl(sdata.importUrl);
+              // Memory storage only survives on one server instance — the
+              // user deserves to know the link is on a short fuse.
+              setEphemeral(sdata.storage === "memory");
+            }
           } finally {
             setBuilding(false);
           }
@@ -130,7 +137,7 @@ export default function OrderConsole() {
             <button
               key={seed}
               type="button"
-              className="cursor-pointer rounded-full border border-pewter/60 px-3 py-1.5 text-xs text-silver transition-colors hover:border-teal/60 hover:text-chalk"
+              className="pill px-3 py-1.5 text-xs"
               onClick={() => {
                 setRequest(seed);
                 void fire(seed);
@@ -168,8 +175,8 @@ export default function OrderConsole() {
               <p className="meta-mono mb-3 text-teal">The pass</p>
               <ActionGraphView graph={graph} />
             </div>
-            <ResultCard graph={graph} importUrl={importUrl} building={building} />
-            {importUrl && <p className="meta-mono text-seafoam">Served</p>}
+            <ResultCard graph={graph} importUrl={importUrl} building={building} ephemeral={ephemeral} />
+            {importUrl && <p className="meta-mono text-lime">Served</p>}
           </div>
         )}
       </div>

@@ -99,8 +99,10 @@
   border-radius: inherit;
   pointer-events: none;
   padding: 1px;
+  /* Bevel light direction rides the beam axis like every other glass
+     gradient: 110deg + 25deg = the same 135deg, now token-driven. */
   background: linear-gradient(
-    calc(135deg + 0deg),
+    calc(110deg + var(--beam-angle)),
     rgba(255, 255, 255, 0.34) 0%,
     color-mix(in srgb, var(--color-beam) 24%, transparent) 28%,
     rgba(255, 255, 255, 0.05) 52%,

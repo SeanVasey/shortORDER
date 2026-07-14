@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { validateGraph } from "@/lib/graph";
 import { graphToShortcutPlist } from "@/lib/plist";
-import { activeBackend, storageEnvCandidates, storeShortcut } from "@/lib/storage";
+import {
+  activeBackend,
+  encodeShortcutPayload,
+  storageEnvCandidates,
+  storeShortcut,
+} from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -31,9 +36,30 @@ export async function POST(request: Request) {
   }
 
   const plist = graphToShortcutPlist(graph);
-  const id = await storeShortcut(graph.title, plist);
+  const origin = publicOrigin(request);
 
-  const fileUrl = `${publicOrigin(request)}/api/shortcut/${id}`;
+  let fileUrl: string;
+  let id: string | undefined;
+  let storage: "blob" | "stateless" | "memory";
+
+  if (activeBackend() === "blob") {
+    id = await storeShortcut(graph.title, plist);
+    fileUrl = `${origin}/api/shortcut/${id}`;
+    storage = "blob";
+  } else {
+    // No blob token: prefer the stateless URL — it works on any serverless
+    // instance. Memory only when the file is too large to ride the URL.
+    const payload = encodeShortcutPayload(graph.title, plist);
+    if (payload) {
+      fileUrl = `${origin}/api/shortcut/dl?d=${payload}`;
+      storage = "stateless";
+    } else {
+      id = await storeShortcut(graph.title, plist);
+      fileUrl = `${origin}/api/shortcut/${id}`;
+      storage = "memory";
+    }
+  }
+
   const importUrl =
     "shortcuts://import-shortcut?" +
     new URLSearchParams({
@@ -42,9 +68,8 @@ export async function POST(request: Request) {
       silent: "false", // always let the user review before adding
     }).toString();
 
-  const storage = activeBackend();
   return NextResponse.json({
-    id,
+    ...(id ? { id } : {}),
     fileUrl,
     importUrl,
     storage,

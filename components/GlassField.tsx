@@ -10,7 +10,7 @@ type GlassFieldProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
 const GlassField = forwardRef<HTMLTextAreaElement, GlassFieldProps>(
   function GlassField({ label, className = "", ...rest }, ref) {
     return (
-      <div className="glass [--glass-radius:1.25rem] [--glass-glow:0.7]">
+      <div className="glass [--glass-glow:0.7]">
         <div className="glass-refract" aria-hidden="true" />
         <div className="glass-spec" aria-hidden="true" />
         <div className="glass-content p-1">

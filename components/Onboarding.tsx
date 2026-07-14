@@ -73,7 +73,7 @@ export default function Onboarding() {
       )}
 
       {stage !== null && stage >= 2 && (
-        <GlassPanel className="w-full max-w-md [--glass-radius:1.5rem]" glow={0.8} contentClassName="p-7 sm:p-9">
+        <GlassPanel className="glass-radius-lg w-full max-w-md" glow={0.8} contentClassName="glass-scrim p-7 sm:p-9">
           <p className="meta-mono mb-5 text-teal">
             {String(stage - 1).padStart(2, "0")} / 05
           </p>
@@ -156,7 +156,7 @@ export default function Onboarding() {
                   <button
                     key={seed}
                     type="button"
-                    className="cursor-pointer rounded-xl border border-pewter/60 px-4 py-3 text-left text-sm text-chalk transition-colors hover:border-teal/70"
+                    className="pill rounded-xl px-4 py-3 text-left text-sm text-chalk"
                     onClick={() => finish(seed)}
                   >
                     {seed}

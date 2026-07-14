@@ -18,6 +18,22 @@ describe('validateGraph', () => {
     assert.equal(graph.actions[0].parameters.WFCommentActionText, 'hi');
   });
 
+  it('rejects output refs pointing past the actions array', () => {
+    assert.throws(() => validateGraph({
+      title: 'Dangling ref',
+      summary: '',
+      feasibility: 'native',
+      confidence: 0.9,
+      actions: [{
+        identifier: 'is.workflow.actions.showresult',
+        parameters: { Text: { $ref: 'output', action: 5, name: 'Ghost' } },
+        note: '',
+      }],
+      importQuestions: [],
+      gaps: [],
+    }), /nonexistent action/);
+  });
+
   it('rejects unsafe prototype keys in model parameters', () => {
     assert.throws(() => validateGraph({
       title: 'Bad',

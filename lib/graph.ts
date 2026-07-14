@@ -137,6 +137,27 @@ export function isVariableRef(v: unknown): v is VariableRef {
   );
 }
 
+/**
+ * A {"$ref":"output"} pointing past the end of the actions array would
+ * serialize into an attachment whose UUID is never assigned to any action —
+ * a silently broken variable in the imported shortcut.
+ */
+function assertOutputRefsInRange(value: ParamValue, max: number, path: string): void {
+  if (isOutputRef(value)) {
+    if (value.action >= max) throw new Error(`${path}: output ref to nonexistent action ${value.action}`);
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, i) => assertOutputRefsInRange(item, max, `${path}[${i}]`));
+    return;
+  }
+  if (typeof value === "object" && value !== null && !isVariableRef(value)) {
+    for (const [key, child] of Object.entries(value)) {
+      assertOutputRefsInRange(child, max, `${path}.${key}`);
+    }
+  }
+}
+
 /** Validates and normalizes the LLM's JSON into an ActionGraph. Throws on malformed shape. */
 export function validateGraph(raw: unknown): ActionGraph {
   if (typeof raw !== "object" || raw === null) throw new Error("graph: not an object");
@@ -168,6 +189,10 @@ export function validateGraph(raw: unknown): ActionGraph {
       note: typeof act.note === "string" ? cleanString(act.note, 500) : "",
     };
   });
+
+  actions.forEach((action, i) =>
+    assertOutputRefsInRange(action.parameters, actions.length, `graph.actions[${i}].parameters`),
+  );
 
   const rawQuestions = Array.isArray(g.importQuestions) ? g.importQuestions : [];
   const importQuestions: ImportQuestion[] = rawQuestions.flatMap((q) => {
